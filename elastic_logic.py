@@ -1,8 +1,8 @@
-from json_logic import jsonLogic
-import json
 
 
 # Schema
+import json
+
 {
   "type": "object",
   "properties": {
@@ -12,20 +12,32 @@ import json
   }
 }
 
-def es2jsonlogic(rules,top_condition,operator):
-        print("Top condition %s",top_condition)
 
-        rule_key = next(iter(top_condition))
+# Example rules and data
+# rules = {"and": [
+#     {"<": [{"var": "temp"}, 110]},
+#     {"==": [{"var": "pie.filling"}, "apple"]}
+# ]}
+#
+# data = {"temp": 100, "pie": {"filling": "apple"}}
+
+# print(jsonLogic(rules, data))
+# True
+
+def es2jsonlogic(rules, condition, operator):
+        print("Condition: %s", condition)
+
+        rule_key = next(iter(condition))
 
         if rule_key == "match":
-            rule_value = top_condition[rule_key]
+            rule_value = condition[rule_key]
             for k,v in rule_value.items():
                  subrule = {"==":[{"var":k},v]}
                  rules[operator].append(subrule)
         elif rule_key == "multi_match":
-            for k in top_condition:
-                fields = top_condition[k]["fields"]
-                query = top_condition[k]["query"]
+            for k in condition:
+                fields = condition[k]["fields"]
+                query = condition[k]["query"]
 
                 subrule = {"or":[]}
 
@@ -36,7 +48,7 @@ def es2jsonlogic(rules,top_condition,operator):
 
                 rules[operator].append(subrule)
         elif rule_key == "range":
-            rule_value = top_condition[rule_key]
+            rule_value = condition[rule_key]
             for k,v in rule_value.items():
                 # Now find the operator
                 for i,j in v.items():
@@ -45,21 +57,35 @@ def es2jsonlogic(rules,top_condition,operator):
                         value = j
                         subrule = {range_operator: [{"var": k}, value]}
                         rules[operator].append(subrule)
+        elif rule_key == "exists":
+            rule_value = condition[rule_key]
+
+            for k,v in rule_value.items():
+                subrule = {"exists":[{"var":v},None]}
+                rules[operator].append(subrule)
+        elif rule_key == "terms":
+            rule_value = condition[rule_key]
+
+            for k,v in rule_value.items():
+                field = k
+                values_array = v
+                subrule = {"in":[{"var":field},values_array]}
+                rules[operator].append(subrule)
 
         elif rule_key == "bool":
             # Recursively process this rule as if it were a top level condition and append result to parent condition
-            bool_operator = next(iter(top_condition["bool"]))
+            bool_operator = next(iter(condition["bool"]))
             if bool_operator == "must":
                 rec_operator = "and"
             elif bool_operator == "should":
                 rec_operator = "or"
             else:
-                raise ValueError("Elasticsearch boolean operator no supported")
+                raise ValueError("Elasticsearch boolean operator not supported")
 
             rec_rules = {
                            rec_operator:[]
                         }
-            for rec_top_condition in top_condition["bool"][bool_operator]:
+            for rec_top_condition in condition["bool"][bool_operator]:
                 rec_rules = es2jsonlogic(rec_rules,rec_top_condition,rec_operator)
 
             # Append the result of the recursion to the original
@@ -99,96 +125,48 @@ def jsonlogic2es(reverse_query, condition):
             field = rule_content[0]['var']
             variable = rule_content[1]
             reverse_query.append({"match": {field:variable} })
+        elif bool_operator == "exists":
+            variable = rule_content[0]['var']
+            reverse_query.append({"exists": {"field":variable}})
+        elif bool_operator == "in":
+            field = rule_content[0]['var']
+            values_array = rule_content[1]
+            reverse_query.append({"terms": {field:values_array}})
 
         return reverse_query
 
 
-
-if __name__ == '__main__':
-    es_query = {
-        "query" : {
-            "bool" : {
-                "must" : [
-                    {"match": {"title": "Search"}},
-                    {
-                        "multi_match" : {
-                            "fields" : ["md5", "title", "resource_name", "processing_title", "text_addition", "extracted_text"],
-                            "query" : "domain"
-                        }
-                    }, {
-                        "bool" : {
-                            "must" : [{
-                                    "match" : {
-                                        "classification.term" : "Contract"
-                                    }
-                                }, {
-                                    "range" : {
-                                        "classification.proba" : {
-                                            "gte" : 0.8,
-                                            "boost" : 2
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    }
-                ]
-            }
-        }
-    }
-
-
-    #Example rules and data
-    rules = {"and": [
-        {"<": [{"var": "temp"}, 110]},
-        {"==": [{"var": "pie.filling"}, "apple"]}
-    ]}
-
-    data = {"temp": 100, "pie": {"filling": "apple"}}
-
-    # print(jsonLogic(rules, data))
-    # True
-
-    rules = {
-       "and":[]
+def create_logic_object(es_query):
+    logic = {
+        "and": []
     }
 
     # 1. convert ES query to json rule
     for top_condition in es_query["query"]["bool"]["must"]:
-        rules = es2jsonlogic(rules,top_condition,"and")
+        logic = es2jsonlogic(logic, top_condition, "and")
 
-    print(json.dumps(rules, indent=2))
+    print(json.dumps(logic, indent=2))
 
-    print("-"*20)
-
+    print("-" * 20)
 
     # 2. convert json rule to es query
     final_reverse_query = {
         "query": {
             "bool": {
-                "must":[]
+                "must": []
             }
         }
     }
 
     reverse_query = []
-    for condition in rules["and"]:
-        print(condition)
-        reverse_query = jsonlogic2es(reverse_query,condition)
+    for condition in logic["and"]:
+        print("Condition: %s", condition)
+        reverse_query = jsonlogic2es(reverse_query, condition)
 
-    final_reverse_query["query"]["bool"]["must"].append(reverse_query)
-    print(final_reverse_query)
-    
-    
-    # 3. Assertion with new data
-    data = {"title":"Search"}
-    print(jsonLogic(rules, data))
-    #False
+    final_reverse_query["query"]["bool"]["must"] = reverse_query
 
-    data = {"title": "Search","md5":"domain"}
-    print(jsonLogic(rules, data))
-    #False
+    print("\nReverse Query:\n")
+    print(json.dumps(final_reverse_query, indent=2))
 
-    data = {"title": "Search", "md5": "domain","classification":{"term":"Contract","proba":0.8}}
-    print(jsonLogic(rules, data))
-    #True
+    return logic
+

@@ -4,6 +4,24 @@
 import sys
 from functools import reduce
 
+def equals(a,b):
+    if isinstance(a,str) and isinstance(b,str):
+        return a.lower() == b.lower()
+    else:
+        return a == b
+
+def in_array(a,b):
+    if "__contains__" in dir(b):
+       if isinstance(a,str):
+           a = a.lower()
+       return  a in [x.lower() if isinstance(x,str) else x for x in b ]
+    else:
+       return False
+
+# IA
+def exists(a, b):
+    return True if a != None else False
+
 def jsonLogic(tests, data=None):
   # You've recursed to a primitive, stop!
   if tests is None or type(tests) != dict:
@@ -14,7 +32,7 @@ def jsonLogic(tests, data=None):
   op = list(tests)[0]
   values = tests[op]
   operations = {
-    "=="  : (lambda a, b: a == b),
+    "=="  : (lambda a, b: equals(a,b)),
     "===" : (lambda a, b: a is b),
     "!="  : (lambda a, b: a != b),
     "!==" : (lambda a, b: a is not b),
@@ -40,9 +58,7 @@ def jsonLogic(tests, data=None):
       ),
     "?:"  : (lambda a, b, c: b if a else c),
     "log" : (lambda a: a if sys.stdout.write(str(a)) else a),
-    "in"  : (lambda a, b:
-        a in b if "__contains__" in dir(b) else False
-      ),
+    "in"  : (lambda a, b: in_array(a,b) ),
     "var" : (lambda a, not_found=None:
         reduce(lambda data, key: (data.get(key, not_found)
                                   if type(data) == dict
@@ -67,6 +83,7 @@ def jsonLogic(tests, data=None):
     "min" : (lambda *args: min(args)),
     "max" : (lambda *args: max(args)),
     "count": (lambda *args: sum(1 if a else 0 for a in args)),
+    "exists": (lambda a, b : exists(a, b)),
   }
 
   if op not in operations:
