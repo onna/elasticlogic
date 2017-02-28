@@ -159,68 +159,6 @@ def create_logic_object(es_query):
         }
     }
 
-    logic =  { "and" : [{
-	"or": [{
-			"and": [{
-					"text_contains": [{
-							"var": "extracted_text"
-						},
-						"google"
-					]
-				}, {
-					"in": [{
-							"var": "extension"
-						},
-						[
-							"pdf"
-						]
-					]
-				}
-			]
-		},{
-			"and": [{
-					"text_contains": [{
-							"var": "extracted_text"
-						},
-						"chrome"
-					]
-				}, {
-					"and": [{
-							"text_contains": [{
-									"var": "classification.term"
-								},
-								"Contract"
-							]
-						}, {
-							">=": [{
-									"var": "classification.proba"
-								},
-								0.85
-							]
-						}
-					]
-				}, {
-					"in": [{
-							"var": "extension"
-						},
-						[
-							"doc",
-							"pdf"
-						]
-					]
-				}, {
-					">": [{
-							"var": "modifiedDate"
-						},
-						"2016-01-15"
-					]
-				}
-			]
-		}
-
-	]
-}]}
-
     reverse_query = []
     for condition in logic["and"]:
         print("Condition: %s", condition)
