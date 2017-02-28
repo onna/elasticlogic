@@ -3,6 +3,18 @@
 
 import sys
 from functools import reduce
+import datetime
+import time
+from dateutil.parser import parse
+
+ES_DATE_FORMAT = "%Y-%m-%d"
+
+def is_date(string):
+    try:
+        parse(string)
+        return True
+    except Exception:
+        return False
 
 def equals(a,b):
     if isinstance(a,str) and isinstance(b,str):
@@ -12,11 +24,61 @@ def equals(a,b):
 
 def in_array(a,b):
     if "__contains__" in dir(b):
-       if isinstance(a,str):
-           a = a.lower()
-       return  a in [x.lower() if isinstance(x,str) else x for x in b ]
+        a = a.lower() if isinstance(a, str) else a
+
+        return  a in [x.lower() if isinstance(x,str) else x for x in b ]
     else:
        return False
+
+def text_contains(a,b):
+    a = a.lower() if isinstance(a,str) else str(a)
+    b = b.lower() if isinstance(b, str) else str(b)
+
+    if not a is None and not b is None:
+        return b in a
+    else:
+        return False
+
+def gt(a,b):
+    if a != None and b != None:
+        if (is_date(a) and is_date(b)):
+            a = time.strptime(a,ES_DATE_FORMAT)
+            b = time.strptime(b, ES_DATE_FORMAT)
+
+        return a > b
+    else:
+        return False
+
+def gte(a,b):
+    if a != None and b != None:
+        if (is_date(a) and is_date(b)):
+            a = time.strptime(a,ES_DATE_FORMAT)
+            b = time.strptime(b, ES_DATE_FORMAT)
+
+        return a >= b
+    else:
+        return False
+
+def lt(a, b):
+    if a != None and b != None:
+        if (is_date(a) and is_date(b)):
+            a = time.strptime(a,ES_DATE_FORMAT)
+            b = time.strptime(b, ES_DATE_FORMAT)
+
+        return a < b
+    else:
+        return False
+
+def lte(a, b):
+    if a != None and b != None:
+        if (is_date(a) and is_date(b)):
+            a = time.strptime(a,ES_DATE_FORMAT)
+            b = time.strptime(b, ES_DATE_FORMAT)
+
+        return a <= b
+    else:
+        return False
+
 
 # IA
 def exists(a, b):
@@ -36,18 +98,10 @@ def jsonLogic(tests, data=None):
     "===" : (lambda a, b: a is b),
     "!="  : (lambda a, b: a != b),
     "!==" : (lambda a, b: a is not b),
-    ">"   : (lambda a, b:
-             a > b if a != None and b != None else False
-             ),
-    ">="  : (lambda a, b:
-             a >= b if a != None and b != None else False
-             ),
-    "<"   : (lambda a, b:
-        a < b if a != None and b != None else False
-      ),
-    "<="  : (lambda a, b:
-        a <= b if a != None and b != None else False
-      ),
+    ">"   : (lambda a, b: gt(a,b)),
+    ">="  : (lambda a, b: gte(a,b)),
+    "<"   : (lambda a, b: lt(a,b)),
+    "<="  : (lambda a, b: lte(a,b)),
     "!"   : (lambda a: not a),
     "%"   : (lambda a, b: a % b),
     "and" : (lambda *args:
@@ -84,6 +138,7 @@ def jsonLogic(tests, data=None):
     "max" : (lambda *args: max(args)),
     "count": (lambda *args: sum(1 if a else 0 for a in args)),
     "exists": (lambda a, b : exists(a, b)),
+    "text_contains": (lambda a, b: text_contains(a,b))
   }
 
   if op not in operations:

@@ -1,5 +1,3 @@
-
-
 # Schema
 import json
 
@@ -32,19 +30,22 @@ def es2jsonlogic(rules, condition, operator):
         if rule_key == "match":
             rule_value = condition[rule_key]
             for k,v in rule_value.items():
-                 subrule = {"==":[{"var":k},v]}
+                 # subrule = {"==":[{"var":k},v]}
+                 subrule = {"text_contains":[{"var":k},v]}
                  rules[operator].append(subrule)
         elif rule_key == "multi_match":
             for k in condition:
                 fields = condition[k]["fields"]
-                query = condition[k]["query"]
+                query_terms = condition[k]["query"].split(" ")
 
                 subrule = {"or":[]}
 
                 # subrule here is a compound OR of all the fields
                 for field in fields:
-                    subsubrule = {"==":[{"var":field},query]}
-                    subrule["or"].append(subsubrule)
+                    for query in query_terms:
+                        #subsubrule = {"==":[{"var":field},query]}
+                        subsubrule = {"text_contains": [{"var": field}, query]}
+                        subrule["or"].append(subsubrule)
 
                 rules[operator].append(subrule)
         elif rule_key == "range":
@@ -121,7 +122,7 @@ def jsonlogic2es(reverse_query, condition):
             variable = rule_content[1]
             range_operator = bool_operator.replace(">=", "gte").replace("<=", "lte").replace(">", "gt").replace("<", "lt")
             reverse_query.append({"range": {field: {range_operator:variable}}})
-        elif bool_operator == "==":
+        elif bool_operator == "text_contains": # bool_operator == "==" or
             field = rule_content[0]['var']
             variable = rule_content[1]
             reverse_query.append({"match": {field:variable} })
@@ -145,7 +146,7 @@ def create_logic_object(es_query):
     for top_condition in es_query["query"]["bool"]["must"]:
         logic = es2jsonlogic(logic, top_condition, "and")
 
-    print(json.dumps(logic, indent=2))
+    print(json.dumps(logic, indent=4))
 
     print("-" * 20)
 
@@ -158,6 +159,68 @@ def create_logic_object(es_query):
         }
     }
 
+    logic =  { "and" : [{
+	"or": [{
+			"and": [{
+					"text_contains": [{
+							"var": "extracted_text"
+						},
+						"google"
+					]
+				}, {
+					"in": [{
+							"var": "extension"
+						},
+						[
+							"pdf"
+						]
+					]
+				}
+			]
+		},{
+			"and": [{
+					"text_contains": [{
+							"var": "extracted_text"
+						},
+						"chrome"
+					]
+				}, {
+					"and": [{
+							"text_contains": [{
+									"var": "classification.term"
+								},
+								"Contract"
+							]
+						}, {
+							">=": [{
+									"var": "classification.proba"
+								},
+								0.85
+							]
+						}
+					]
+				}, {
+					"in": [{
+							"var": "extension"
+						},
+						[
+							"doc",
+							"pdf"
+						]
+					]
+				}, {
+					">": [{
+							"var": "modifiedDate"
+						},
+						"2016-01-15"
+					]
+				}
+			]
+		}
+
+	]
+}]}
+
     reverse_query = []
     for condition in logic["and"]:
         print("Condition: %s", condition)
@@ -166,7 +229,7 @@ def create_logic_object(es_query):
     final_reverse_query["query"]["bool"]["must"] = reverse_query
 
     print("\nReverse Query:\n")
-    print(json.dumps(final_reverse_query, indent=2))
+    print(json.dumps(final_reverse_query, indent=4))
 
     return logic
 
