@@ -30,12 +30,30 @@ def in_array(a,b):
     else:
        return False
 
+
+def not_in_array(a,b):
+    if "__contains__" in dir(b):
+        a = a.lower() if isinstance(a, str) else a
+
+        return not a in [x.lower() if isinstance(x,str) else x for x in b ]
+    else:
+       return False
+
 def text_contains(a,b):
     a = a.lower() if isinstance(a,str) else str(a)
     b = b.lower() if isinstance(b, str) else str(b)
 
     if not a is None and not b is None:
         return b in a
+    else:
+        return False
+
+def not_text_contains(a,b):
+    a = a.lower() if isinstance(a,str) else str(a)
+    b = b.lower() if isinstance(b, str) else str(b)
+
+    if not a is None and not b is None:
+        return not (b in a)
     else:
         return False
 
@@ -110,9 +128,13 @@ def jsonLogic(tests, data=None):
     "or"  : (lambda *args:
         reduce(lambda total, arg: total or arg, args, False)
       ),
+    "and not": (lambda *args:
+        reduce(lambda total, arg: not total or not arg, args, True) #IA not A or not B
+      ),
     "?:"  : (lambda a, b, c: b if a else c),
     "log" : (lambda a: a if sys.stdout.write(str(a)) else a),
     "in"  : (lambda a, b: in_array(a,b) ),
+    "not in": (lambda a, b: not_in_array(a, b)),
     "var" : (lambda a, not_found=None:
         reduce(lambda data, key: (data.get(key, not_found)
                                   if type(data) == dict
@@ -138,7 +160,8 @@ def jsonLogic(tests, data=None):
     "max" : (lambda *args: max(args)),
     "count": (lambda *args: sum(1 if a else 0 for a in args)),
     "exists": (lambda a, b : exists(a, b)),
-    "text_contains": (lambda a, b: text_contains(a,b))
+    "text_contains": (lambda a, b: text_contains(a,b)),
+    "not_text_contains": (lambda a, b: not_text_contains(a,b))
   }
 
   if op not in operations:

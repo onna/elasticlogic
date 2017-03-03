@@ -80,6 +80,8 @@ def es2jsonlogic(rules, condition, operator):
                 rec_operator = "and"
             elif bool_operator == "should":
                 rec_operator = "or"
+            elif bool_operator == "must_not":
+                rec_operator = "and not"
             else:
                 raise ValueError("Elasticsearch boolean operator not supported")
 
@@ -117,6 +119,16 @@ def jsonlogic2es(reverse_query, condition):
                     "should": should_array
                 }
             })
+        elif bool_operator == "and not":
+            must_not_array = []
+            for and_not_condition in rule_content:
+                must_not_array = jsonlogic2es(must_not_array, and_not_condition)
+
+                reverse_query.append({
+                    "bool": {
+                        "must_not": must_not_array
+                    }
+                })
         elif bool_operator in ['>','>=','<','<=']:
             field = rule_content[0]['var']
             variable = rule_content[1]
@@ -133,6 +145,12 @@ def jsonlogic2es(reverse_query, condition):
             field = rule_content[0]['var']
             values_array = rule_content[1]
             reverse_query.append({"terms": {field:values_array}})
+        elif bool_operator == "not in":
+            field = rule_content[0]['var']
+            values_array = rule_content[1]
+
+            must_not_query = {"bool":{"must_not":[{"terms": {field:values_array}   }]}}
+            reverse_query.append(must_not_query)
 
         return reverse_query
 
@@ -171,3 +189,38 @@ def create_logic_object(es_query):
 
     return logic
 
+def create_es_query(logic):
+
+    # 1. convert json rule to es query
+    final_reverse_query = {
+        "query": {
+            "bool": {
+                "must": []
+            }
+        }
+    }
+
+    reverse_query = []
+    for condition in logic["and"]:
+        print("Condition: %s", condition)
+        reverse_query = jsonlogic2es(reverse_query, condition)
+
+    final_reverse_query["query"]["bool"]["must"] = reverse_query
+
+    print("\nReverse Query:\n")
+    print(json.dumps(final_reverse_query, indent=4))
+
+    print("-" * 20)
+
+    logic = {
+        "and": []
+    }
+
+    # 2. convert ES query to json rule
+    for top_condition in final_reverse_query["query"]["bool"]["must"]:
+        logic = es2jsonlogic(logic, top_condition, "and")
+
+    print(json.dumps(logic, indent=4))
+
+
+    return reverse_query

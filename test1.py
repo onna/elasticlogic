@@ -1,5 +1,6 @@
 from json_logic import jsonLogic
-from elastic_logic import create_logic_object
+from elastic_logic import create_logic_object, create_es_query, jsonlogic2es
+import json
 
 def test_match():
     es_query = {
@@ -24,6 +25,40 @@ def test_match():
 
     data = {"title": "something else"}
     assert not jsonLogic(logic, data)
+
+
+def test_not_match():
+    es_query = {
+        "query": {
+            "bool": {
+                "must": [
+                    {
+                        "bool": {
+                            "must_not": [{
+                                "match": {
+                                    "title": "treasure"
+                                }
+                            }
+                            ]
+                        }
+                    }
+                ]
+            }
+        }
+    }
+
+    logic = create_logic_object(es_query=es_query)
+
+    # 3. Assertion with new data
+    #{"==":[{"var":"title"},"Search"]}
+    data = {"title": "treASure"}
+    assert not jsonLogic(logic, data)
+
+    data = {"extracted_text": "I found a nice treasure."}
+    assert jsonLogic(logic,data)
+
+    data = {"title": "something else"}
+    assert jsonLogic(logic, data)
 
 def test_number_match():
     es_query = {
@@ -179,6 +214,25 @@ def test_terms():
 
     data = {"extension": "pdfx"}
     assert not jsonLogic(logic, data)
+
+    data = {"extension": "JPEG"}
+    assert jsonLogic(logic, data)
+
+
+def test_excl_terms():
+
+    condition = {"not in":[{"var":"extension"},["pdf","doc"]]}
+    logic = {"and":[condition]}
+
+
+    create_es_query(logic)
+
+    # Condition met
+    data = {"extension": "pdf"}
+    assert not jsonLogic(logic, data)
+
+    data = {"extension": "pdfx"}
+    assert jsonLogic(logic, data)
 
     data = {"extension": "JPEG"}
     assert jsonLogic(logic, data)
