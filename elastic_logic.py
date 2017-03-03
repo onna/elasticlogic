@@ -81,7 +81,7 @@ def es2jsonlogic(rules, condition, operator):
             elif bool_operator == "should":
                 rec_operator = "or"
             elif bool_operator == "must_not":
-                rec_operator = "and not"
+                rec_operator = "and_not"
             else:
                 raise ValueError("Elasticsearch boolean operator not supported")
 
@@ -119,7 +119,7 @@ def jsonlogic2es(reverse_query, condition):
                     "should": should_array
                 }
             })
-        elif bool_operator == "and not":
+        elif bool_operator == "and_not":
             must_not_array = []
             for and_not_condition in rule_content:
                 must_not_array = jsonlogic2es(must_not_array, and_not_condition)
@@ -145,7 +145,7 @@ def jsonlogic2es(reverse_query, condition):
             field = rule_content[0]['var']
             values_array = rule_content[1]
             reverse_query.append({"terms": {field:values_array}})
-        elif bool_operator == "not in":
+        elif bool_operator == "not_in":
             field = rule_content[0]['var']
             values_array = rule_content[1]
 

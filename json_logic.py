@@ -128,13 +128,13 @@ def jsonLogic(tests, data=None):
     "or"  : (lambda *args:
         reduce(lambda total, arg: total or arg, args, False)
       ),
-    "and not": (lambda *args:
+    "and_not": (lambda *args:
         reduce(lambda total, arg: not total or not arg, args, True) #IA not A or not B
       ),
     "?:"  : (lambda a, b, c: b if a else c),
     "log" : (lambda a: a if sys.stdout.write(str(a)) else a),
     "in"  : (lambda a, b: in_array(a,b) ),
-    "not in": (lambda a, b: not_in_array(a, b)),
+    "not_in": (lambda a, b: not_in_array(a, b)),
     "var" : (lambda a, not_found=None:
         reduce(lambda data, key: (data.get(key, not_found)
                                   if type(data) == dict
