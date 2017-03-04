@@ -1,6 +1,6 @@
-from json_logic import jsonLogic
-from elastic_logic import create_logic_object, create_es_query, jsonlogic2es
-import json
+from elasticlogic.json_logic import jsonLogic
+from elasticlogic.elastic_logic import create_logic_object, create_es_query
+
 
 def test_match():
     es_query = {
