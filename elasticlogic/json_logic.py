@@ -97,10 +97,32 @@ def lte(a, b):
     else:
         return False
 
+def lte(a, b):
+    if a != None and b != None:
+        if (is_date(a) and is_date(b)):
+            a = time.strptime(a, ES_DATE_FORMAT)
+            b = time.strptime(b, ES_DATE_FORMAT)
 
+        return a <= b
+    else:
+        return False
 # IA
 def exists(a, b):
     return True if a != None else False
+
+def regexp(a,b):
+    a = a.lower() if isinstance(a,str) else str(a)
+    b = b.lower() if isinstance(b, str) else str(b)
+
+    if not a is None and not b is None:
+        try:
+            import re
+            pattern = re.compile(b)
+            return True if pattern.search(a) else False
+        except:
+            return False
+    else:
+        return False
 
 def jsonLogic(tests, data=None):
   # You've recursed to a primitive, stop!
@@ -161,7 +183,8 @@ def jsonLogic(tests, data=None):
     "count": (lambda *args: sum(1 if a else 0 for a in args)),
     "exists": (lambda a, b : exists(a, b)),
     "text_contains": (lambda a, b: text_contains(a,b)),
-    "not_text_contains": (lambda a, b: not_text_contains(a,b))
+    "not_text_contains": (lambda a, b: not_text_contains(a,b)),
+    "regexp": (lambda a, b: regexp(a,b)),
   }
 
   if op not in operations:
