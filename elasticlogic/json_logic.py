@@ -40,6 +40,8 @@ def not_in_array(a,b):
        return False
 
 def text_contains(a,b):
+    a = ' '.join(a) if isinstance(a, list) else a
+
     a = a.lower() if isinstance(a,str) else str(a)
     b = b.lower() if isinstance(b, str) else str(b)
 
@@ -49,6 +51,8 @@ def text_contains(a,b):
         return False
 
 def not_text_contains(a,b):
+    a = ' '.join(a) if isinstance(a, list) else a
+
     a = a.lower() if isinstance(a,str) else str(a)
     b = b.lower() if isinstance(b, str) else str(b)
 
