@@ -24,9 +24,16 @@ def equals(a,b):
 
 def in_array(a,b):
     if "__contains__" in dir(b):
-        a = a.lower() if isinstance(a, str) else a
 
-        return  a in [x.lower() if isinstance(x,str) else x for x in b ]
+        if isinstance(a, list):
+            # Check all list items in rule are a subset of the list items in data
+            a = [x.lower() for x in a if isinstance(a, list)]
+            b = [x.lower() for x in b if isinstance(b, list)]
+            return set(a).issubset(b)
+        else:
+            # Check all strings in rule are in list of string in data
+            a = a.lower() if isinstance(a, str) else a
+            return a in [x.lower() if isinstance(x,str) else x for x in b ]
     else:
        return False
 
@@ -128,6 +135,25 @@ def regexp(a,b):
     else:
         return False
 
+
+def get_var(data, var_name, not_found=None):
+    try:
+        for key in str(var_name).split('.'):
+            try:
+
+                if isinstance(data, list):
+                    data = [x[key] for x in data]
+                else:
+                    data = data[key]
+
+            except TypeError:
+                data = data[int(key)]
+    except (KeyError, TypeError, ValueError):
+        return not_found
+    else:
+        return data
+
+
 def jsonLogic(tests, data=None):
   # You've recursed to a primitive, stop!
   if tests is None or type(tests) != dict:
@@ -161,16 +187,6 @@ def jsonLogic(tests, data=None):
     "log" : (lambda a: a if sys.stdout.write(str(a)) else a),
     "in"  : (lambda a, b: in_array(a,b) ),
     "not_in": (lambda a, b: not_in_array(a, b)),
-    "var" : (lambda a, not_found=None:
-        reduce(lambda data, key: (data.get(key, not_found)
-                                  if type(data) == dict
-                                  else data[int(key)]
-                                       if (type(data) in [list, tuple] and
-                                           str(key).lstrip("-").isdigit())
-                                       else not_found),
-               str(a).split("."),
-               data)
-      ),
     "cat" : (lambda *args:
         "".join(args)
       ),
@@ -191,9 +207,6 @@ def jsonLogic(tests, data=None):
     "regexp": (lambda a, b: regexp(a,b)),
   }
 
-  if op not in operations:
-    raise RuntimeError("Unrecognized operation %s" % op)
-
   # Easy syntax for unary operators, like {"var": "x"} instead of strict
   # {"var": ["x"]}
   if type(values) not in [list, tuple]:
@@ -201,5 +214,12 @@ def jsonLogic(tests, data=None):
 
   # Recursion!
   values = map(lambda val: jsonLogic(val, data), values)
+
+  if op == 'var':
+      return get_var(data, *values)
+
+  if op not in operations:
+    raise RuntimeError("Unrecognized operation %s" % op)
+
 
   return operations[op](*values)
