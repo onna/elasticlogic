@@ -22,27 +22,26 @@ def equals(a,b):
     else:
         return a == b
 
+def _in_array(a, b):
+    if isinstance(a, list):
+        # Check all list items in rule are a subset of the list items in data
+        a = [x.lower() for x in a if isinstance(a, list)]
+        b = [x.lower() for x in b if isinstance(b, list)]
+        return set(a).issubset(b)
+    else:
+        # Check all strings in rule are in list of string in data
+        a = a.lower() if isinstance(a, str) else a
+        return a in [x.lower() if isinstance(x,str) else x for x in b ]
+
 def in_array(a,b):
     if "__contains__" in dir(b):
-
-        if isinstance(a, list):
-            # Check all list items in rule are a subset of the list items in data
-            a = [x.lower() for x in a if isinstance(a, list)]
-            b = [x.lower() for x in b if isinstance(b, list)]
-            return set(a).issubset(b)
-        else:
-            # Check all strings in rule are in list of string in data
-            a = a.lower() if isinstance(a, str) else a
-            return a in [x.lower() if isinstance(x,str) else x for x in b ]
+        return _in_array(a, b)
     else:
        return False
 
-
 def not_in_array(a,b):
     if "__contains__" in dir(b):
-        a = a.lower() if isinstance(a, str) else a
-
-        return not a in [x.lower() if isinstance(x,str) else x for x in b ]
+        return not _in_array(a, b)
     else:
        return False
 
@@ -185,8 +184,8 @@ def jsonLogic(tests, data=None):
       ),
     "?:"  : (lambda a, b, c: b if a else c),
     "log" : (lambda a: a if sys.stdout.write(str(a)) else a),
-    "in"  : (lambda a, b: in_array(a,b) ),
-    "not_in": (lambda a, b: not_in_array(a, b)),
+    "in"  : (lambda a, b: in_array(b, a)),
+    "not_in": (lambda a, b: not_in_array(b, a)),
     "cat" : (lambda *args:
         "".join(args)
       ),
