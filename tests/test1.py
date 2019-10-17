@@ -111,8 +111,8 @@ def test_multimatch():
 
     data = {"title": "coal"}
     assert not jsonLogic(logic, data)
-    
-    data = {"completely":"unrelated"}    
+
+    data = {"completely":"unrelated"}
     assert not jsonLogic(logic, data)
 
 def test_combination_query():
@@ -209,32 +209,38 @@ def test_terms():
     logic = create_logic_object(es_query=es_query)
 
     # Condition met
-    data = {"extension": "pdf"}
+    data = {"extension": ["pdf", "jpeg", "png"]}
     assert jsonLogic(logic, data)
 
-    data = {"extension": "pdfx"}
+    data = {"extension": ["pdf"]}
     assert not jsonLogic(logic, data)
 
-    data = {"extension": "JPEG"}
+    data = {"extension": ["pdfx"]}
+    assert not jsonLogic(logic, data)
+
+    data = {"extension": ["JPEG", "pdf"]}
     assert jsonLogic(logic, data)
 
 
 def test_excl_terms():
 
-    condition = {"not in":[{"var":"extension"},["pdf","doc"]]}
+    condition = {"not_in":[{"var":"extension"},["pdf","doc"]]}
     logic = {"and":[condition]}
 
 
     create_es_query(logic)
 
     # Condition met
-    data = {"extension": "pdf"}
+    data = {"extension": ["pdf", "doc", "png"]}
     assert not jsonLogic(logic, data)
 
-    data = {"extension": "pdfx"}
+    data = {"extension": ["pdf"]}
     assert jsonLogic(logic, data)
 
-    data = {"extension": "JPEG"}
+    data = {"extension": ["pdfx"]}
+    assert jsonLogic(logic, data)
+
+    data = {"extension": ["JPEG"]}
     assert jsonLogic(logic, data)
 
 # def test_phrase():
@@ -279,8 +285,8 @@ def test_simple_query():
                                     "fields": ["md5_text", "title", "resource_name", "processing_title", "text_addition", "extracted_text"]
                                 }
                             },{
-                                "terms": {
-                                    "parent_datasource.id": ["18d58f4c148b4fdd9c13efebc93b67cc"]
+                                "match": {
+                                    "parent_datasource.id": "18d58f4c148b4fdd9c13efebc93b67cc"
                                 }
                             },{
                                 "multi_match": {
@@ -304,8 +310,12 @@ def test_simple_query():
                                     ]
                                 }
                             }, {
+                                "match": {
+                                    "extension": "jpeg"
+                                }
+                            }, {
                                 "terms": {
-                                    "extension": ["jpeg"]
+                                    "tags": ["tag1"]
                                 }
                             }
                         ]
@@ -331,7 +341,8 @@ def test_simple_query():
             "term": "Contract",
             "proba": 0.9
         },
-        "extension": "JPEG"
+        "extension": "JPEG",
+        "tags": ["tag1", "tag2"]
     }
 
     assert jsonLogic(logic, data)
